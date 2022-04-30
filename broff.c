@@ -11,12 +11,12 @@
 #include <stdbool.h>
 
 // Output indentation
-#if 1
+#if 0
 #  define INDENT "    "
 #  define INDENT_BASE
 #else
 #  define INDENT "\t"
-#  define INDENT_BASE INDENT INDENT INDENT
+#  define INDENT_BASE INDENT INDENT
 #endif
 
 static enum command
@@ -25,15 +25,17 @@ static enum command
     CMD_NH,
     CMD_PP,
     CMD_DS,
+    CMD_TL,
 
     // Non-standard
     CMD_LI,
 } cmd = CMD_NONE;
 
 static int heading_level;
-bool is_sentence = false;
-char *line;
-ssize_t len;
+static bool is_sentence = false;
+static char *line;
+static ssize_t len;
+static char date_str[32] = { 0 };
 
 static bool check_font(const char *restrict const, const char *restrict const);
 static bool check_link(void);
@@ -75,7 +77,16 @@ end_last_cmd(void)
         printf(INDENT_BASE INDENT
             "</ul>\n");
         break;
-
+    case CMD_TL:
+        // Also print the date if we parsed one
+        if (*date_str)
+        {
+            printf(INDENT_BASE INDENT INDENT
+                "<span style=\"float: right\">%s</span>\n", date_str);
+        }
+        printf(INDENT_BASE INDENT
+            "</header>\n");
+        break;
     default: break;
     }
 }
@@ -134,6 +145,17 @@ main(int argc, char *argv[])
             continue;
         }
 
+        // .TL title
+        if (len >= strlen(".TL") &&
+            strncmp(line, ".TL", strlen(".TL")) == 0)
+        {
+            end_last_cmd();
+            cmd = CMD_TL;
+
+            printf(INDENT_BASE INDENT
+                "<header>\n");
+            continue;
+        }
         // .NH Section headings
         if (len >= strlen(".NH") &&
             strncmp(line, ".NH", strlen(".NH")) == 0)
@@ -187,6 +209,14 @@ main(int argc, char *argv[])
             cmd = CMD_LI;
 
             printf(INDENT_BASE INDENT "<li>\n");
+            continue;
+        }
+
+        // .DA date
+        if (len > strlen(".DA") &&
+            strncmp(line, ".DA", strlen(".DA")) == 0)
+        {
+            strncpy(date_str, line + strlen(".DA") + 1, sizeof(date_str));
             continue;
         }
 
