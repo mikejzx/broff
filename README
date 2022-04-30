@@ -1,0 +1,108 @@
+broff
+=====
+
+broff is a simple program for generating hypertext documents (i.e. HTML) from
+documents in a roff-style language.  This is targeted primarily blog-writing,
+believe it or not (hence the 'b' in the name).
+
+The currently supported macro set is described below; they are of course
+inspired by the classic 'ms' macros.
+
+  Command            Description
+
+  .                  Empty request (ignored)
+
+  .\"                Comment (ignored)
+
+  .PP                Begin a paragraph.  Translates to the <p> tag.
+
+  .NH (level)        Numbered heading.  These translate to <h1>, <h2>, <h3>,
+                     etc. depending on the number.
+
+  .DS                Begin of a display (for code listings). Translates to <pre>
+
+  .DE                End of a display.  Translates to </pre>
+
+  .B and .I          Font changing commands, we don't currently support the
+                     style where this command is used and text is used on next
+                     line.  Instead we focus on the argument-based approach,
+                     where the first argument is the text to use in the font,
+                     second argument is a postfix to immediately apply in the
+                     previous font, and the third argument is a prefix to
+                     immediately apply in the previous font.
+
+  Non-standard commands
+
+  .LI                Begin an unordered list item.
+
+  .H   (uri) (text)  Defines a hyperlink.
+
+
+The program will not generate a full HTML page, but rather just the content of
+a file or stdin converted to HTML within <article> tags.
+
+broff-escapes is a sed script provided which you should run on the outputted
+HTML to escape some characters.
+NOTE: angled brackets are not yet escaped (TODO)
+
+Motive for writing the program:
+
+The question will be asked by many, "What is the point?", and rightly so, as
+there are HTML drivers for roff such as grohtml.  Others will be confused as to
+why one wouldn't just use Markdown for blog writing.
+
+As ridiculous as it may seem, the goal here is to experiment with a subtle
+typographic nicety that Markdown simply cannot achieve consistently, and that
+groff HTML drivers do not seem to bother to implement.  That subtle nicety is
+*proper sentence spacing*.  This refers to a slightly wider space being used at
+the end of sentences.  This is a more traditional, (subjectively) less-robotic
+style that is rarely seen on the web primarily due to the HTML standard not
+providing any straight-forward methods of using it (e.g. spaces between words
+in HTML are not rendered verbatim, but are rather normalised and hence "double
+spaces" are rendered as a single space.  There also is no <sentence> tag
+either).  Many people don't care for such a subtle feature, and if you too
+don't care, then this program is not intended for you and you should instead
+look into using standard groff w/ grohtml or a Markdown parser for your blog
+which would probably make your life a bit easier.
+
+A decent way of achieving this effect in HTML (and the method that is
+implemented in this program), is outlined here:
+
+  https://hea-www.harvard.edu/~fine/Tech/html-sentences.html
+
+The general idea of the method is to surround sentences in <span>s and apply
+some CSS rules.
+
+It may be possible to do this using grohtml or other HTML groff drivers, maybe
+it'd make more sense to just write a new driver or modify grohtml, but in
+general, I wanted to keep things as simple as possible here just to get
+something that worked and fit my use case well enough.
+
+Roff vs markdown:
+
+To indicate the end of a sentence in a roff document, the line must end with a
+period, exclamation mark, question mark, etc.  This is a very intuitive
+convention, and it keeps the source file reasonably neat.  It works like so:
+
+  .SH
+  Heading
+  .
+  .PP
+  This is a sentence.
+  This line doesn't indicate the end of a sentence,
+  but this one does!
+
+One would think that this convention could easily be carried over to Markdown,
+as it works fine for paragraphs:
+
+  # Heading
+
+  This is a sentence.
+  This line doesn't indicate the end of a sentence,
+  but this one does!
+
+The problem with Markdown here becomes apparent when attempting to use list
+items.  As list items can only occupy one line, it becomes a lot trickier to
+explicitly specify the end of the sentence.  One would need to use a different
+convention or some program to detect the end of sentences (which also would be
+prone to make errors, e.g. on abbreviations, if not done carefully).
