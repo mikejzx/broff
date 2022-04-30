@@ -110,7 +110,12 @@ main(int argc, char *argv[])
     {
         // Strip newline
         line[--len] = '\0';
-        if (len <= 1) continue;
+        if (len <= 0) continue;
+
+        if (len == 1 &&
+            *line == '.') continue;
+
+        if (strncmp(line, ".\\\"", strlen(".\\\"")) == 0) continue;
 
         // .DE end display
         if (cmd == CMD_DS &&

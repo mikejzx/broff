@@ -1,7 +1,7 @@
 OUT=broff
 SRC=broff.c
-CFLAGS=-Og -g
-#CFLAGS=-O2
+#CFLAGS=-Og -g
+CFLAGS=-O2
 
 ESCAPES_PROGRAM=broff-escapes
 
