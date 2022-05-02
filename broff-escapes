@@ -10,6 +10,7 @@ s#\\(lq#\&ldquo;#g
 s#\\(rq#\&rdquo;#g
 s#\\(oq#\&lsquo;#g
 s#\\(cq#\&rsquo;#g
+s#\\~#\&nbsp;#g
 
 # TeX-style fancy quotes
 s#``#\&ldquo;#g
