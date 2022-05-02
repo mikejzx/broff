@@ -141,7 +141,7 @@ main(int argc, char *argv[])
         // We are in a preformatted block; just keep printing as-is
         if (cmd == CMD_DS)
         {
-            printf("%s\n", line);
+            printf("\n%s", line);
             continue;
         }
 
@@ -189,7 +189,7 @@ main(int argc, char *argv[])
         {
             end_last_cmd();
             cmd = CMD_DS;
-            printf(INDENT_BASE INDENT "<pre>\n");
+            printf(INDENT_BASE INDENT "<pre>");
             continue;
         }
         // .LI unordered list item
