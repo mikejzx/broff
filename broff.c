@@ -5,10 +5,11 @@
  * the 'ms' macros.
  */
 
+#include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 
 // Output indentation
 #if 0
@@ -48,11 +49,29 @@ end_sentence(void)
 }
 
 static inline bool
-is_sentence_end(char c)
+is_sentence_end(const char *s, int len)
 {
+#if 0
+    // Old method
     return c == '.' ||
         c == '!' ||
         c == '?';
+#endif
+
+    static const char *const SENTENCE_END_CHARS = ".?!";
+
+    // First simply check thelast character
+    const char *c = &s[len - 1];
+    if (strchr(SENTENCE_END_CHARS, *c) != NULL) return true;
+
+    // Check all punctuation that ends the line, and if there is a full-stop in
+    // it (e.g. 'end.)' or 'end."') then we will call it the end of a sentence.
+    for (; c >= s && ispunct(*c); --c)
+    {
+        if (strchr(SENTENCE_END_CHARS, *c) == NULL) return true;
+    }
+
+    return false;
 }
 
 static void
@@ -246,7 +265,7 @@ main(int argc, char *argv[])
         printf("%s", line);
 
         // Detect end of sentence
-        if (is_sentence_end(line[len - 1]))
+        if (is_sentence_end(line, len))
         {
             end_sentence();
         }
@@ -336,12 +355,14 @@ check_font(
         printf("%.*s", (int)(args[1].e - args[1].s), args[1].s);
 
         // If the suffix ends on sentence
-        if (is_sentence_end(*(args[1].e - 1))) end_sentence();
+        if (is_sentence_end(args[1].s, (int)(args[1].e - args[1].s)))
+            end_sentence();
     }
     else if (args[0].e)
     {
         // If the content itself ends on sentence
-        if (is_sentence_end(*(args[0].e - 1))) end_sentence();
+        if (is_sentence_end(args[0].s, (int)(args[0].e - args[0].s)))
+            end_sentence();
     }
 
     return true;
@@ -418,12 +439,12 @@ check_link(void)
         printf("%.*s", (int)(args[2].e - args[2].s), args[2].s);
 
         // If the suffix ends on sentence
-        if (is_sentence_end(*(args[2].e - 1))) end_sentence();
+        if (is_sentence_end(args[2].s, *(args[2].e - 1))) end_sentence();
     }
     else if (args[1].e)
     {
         // If the content itself ends on sentence
-        if (is_sentence_end(*(args[1].e - 1))) end_sentence();
+        if (is_sentence_end(args[1].s, *(args[1].e - 1))) end_sentence();
     }
 
     return true;
