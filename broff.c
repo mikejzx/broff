@@ -41,6 +41,7 @@ static char date_str[32] = { 0 };
 static bool check_font(
     const char *restrict const, const char *restrict const, bool);
 static bool check_link(void);
+static bool check_img(void);
 
 static inline void
 end_sentence(void)
@@ -170,7 +171,7 @@ main(int argc, char *argv[])
         fp = fopen(argv[1], "r");
         if (!fp)
         {
-            fprintf(stderr, "md-to-html: no such file\n");
+            fprintf(stderr, "broff: no such file\n");
             exit(1);
         }
     }
@@ -248,7 +249,7 @@ main(int argc, char *argv[])
             end_last_cmd();
             cmd = CMD_PP;
 
-            printf(INDENT_BASE INDENT "<p>\n");
+            printf(INDENT_BASE INDENT "<p class=\"sentspc\">\n");
             continue;
         }
         // .DS begin display
@@ -276,7 +277,7 @@ main(int argc, char *argv[])
             }
             cmd = CMD_LI;
 
-            printf(INDENT_BASE INDENT "<li>\n");
+            printf(INDENT_BASE INDENT "<li class=\"sentspc\">\n");
             continue;
         }
 
@@ -301,6 +302,9 @@ main(int argc, char *argv[])
             printf(" ");
         }
 
+        // .IM image check
+        if (check_img()) continue;
+
         // .B bold font
         // .I italic font
         // .F fixed font
@@ -308,7 +312,7 @@ main(int argc, char *argv[])
         if (check_font(".I", "i", true)) continue;
         if (check_font(".F", "code", false)) continue;
 
-        // .LNK link
+        // .H link check
         if (check_link()) continue;
 
         // Print out the text content
@@ -493,6 +497,37 @@ check_link(void)
         // If the content itself ends on sentence
         if (is_sentence_end(args[1].s, *(args[1].e - 1))) end_sentence();
     }
+
+    return true;
+}
+
+static bool
+check_img(void)
+{
+    static const char *const IMG_CMD = ".IM";
+    static const int IMG_CMD_LEN = strlen(IMG_CMD);
+
+    if (len < IMG_CMD_LEN ||
+        strncmp(line, IMG_CMD, IMG_CMD_LEN) != 0) return false;
+
+    end_last_cmd();
+    cmd = CMD_NONE;
+
+    /*
+     * IM commands follows this format
+     *
+     * .IM <uri> "image alt text"
+     */
+
+    const char *uri = line + IMG_CMD_LEN;
+    uri += strspn(uri, " ");
+    int uri_len = strcspn(uri, " ");
+    const char *alt = uri + uri_len;
+    alt += strspn(alt, " \"");
+    int alt_len = strcspn(alt, "\"");
+
+    printf(INDENT_BASE INDENT
+        "<img src=\"%.*s\" alt=\"%.*s\"/>\n", uri_len, uri, alt_len, alt);
 
     return true;
 }
