@@ -38,7 +38,8 @@ static char *line;
 static ssize_t len;
 static char date_str[32] = { 0 };
 
-static bool check_font(const char *restrict const, const char *restrict const);
+static bool check_font(
+    const char *restrict const, const char *restrict const, bool);
 static bool check_link(void);
 
 static inline void
@@ -51,27 +52,23 @@ end_sentence(void)
 static inline bool
 is_sentence_end(const char *s, int len)
 {
-#if 0
-    // Old method
-    return c == '.' ||
-        c == '!' ||
-        c == '?';
-#endif
-
-    static const char *const SENTENCE_END_CHARS = ".?!";
+#define SENTENCE_END_CHARS ".?!"
 
     // First simply check thelast character
     const char *c = &s[len - 1];
     if (strchr(SENTENCE_END_CHARS, *c) != NULL) return true;
 
-    // Check all punctuation that ends the line, and if there is a full-stop in
-    // it (e.g. 'end.)' or 'end."') then we will call it the end of a sentence.
-    for (; c >= s && ispunct(*c); --c)
+    // If full stop preceeds a certain set of punctuation, then we can call it
+    // a sentence.
+    for (; c >= s &&
+        strchr(SENTENCE_END_CHARS "()[]`'\"", *c) != NULL;
+        --c)
     {
         if (strchr(SENTENCE_END_CHARS, *c) == NULL) return true;
     }
 
     return false;
+#undef SENTENCE_END_CHARS
 }
 
 static void
@@ -108,6 +105,58 @@ end_last_cmd(void)
         break;
     default: break;
     }
+}
+
+static void
+print_escaped(const char *line, int l)
+{
+#if 0
+    // Verbatim print of content
+    printf("%s", line);
+#else
+    /*
+     * Check for any in-text escape sequences to parse, and print.
+     * Probably quite slow, but we really need to do this.
+     */
+    int len_remain;
+    for (const char *c = line; c < line + l; ++c)
+    {
+        len_remain = line + l - c;
+
+    #define HANDLE_ESC(esc, sub) \
+        if (len_remain >= strlen((esc)) && \
+            strncmp(c, (esc), strlen((esc))) == 0) \
+        { \
+            if ((sub)) printf((sub)); \
+            c += strlen((esc)) - 1; \
+            continue; \
+        }
+
+        // Roff escapes
+        HANDLE_ESC("\\&",   NULL);
+        HANDLE_ESC("\\~",   "&nbsp;");
+        HANDLE_ESC("\\(em", "&mdash;");
+        HANDLE_ESC("\\(lq", "&ldquo;");
+        HANDLE_ESC("\\(rq", "&rdquo;");
+        HANDLE_ESC("\\(oq", "&lsquo;");
+        HANDLE_ESC("\\(cq", "&rsquo;");
+
+        // TeX style typographer quotes; must be in this order
+        HANDLE_ESC("``", "&ldquo;");
+        HANDLE_ESC("''", "&rdquo;");
+        HANDLE_ESC("`",  "&lsquo;");
+        HANDLE_ESC("'",  "&rsquo;");
+
+        // HTML escapes (must run last because of the ampersand one)
+        HANDLE_ESC("<", "&lt;");
+        HANDLE_ESC(">", "&gt;");
+        HANDLE_ESC("&", "&amp;");
+        HANDLE_ESC("...", "&hellip;");
+
+        // No escape here, just print out this content normally
+        printf("%c", *c);
+    }
+#endif
 }
 
 int
@@ -254,15 +303,16 @@ main(int argc, char *argv[])
 
         // .B bold font
         // .I italic font
-        if (check_font(".B", "b")) continue;
-        if (check_font(".I", "i")) continue;
-
+        // .F fixed font
+        if (check_font(".B", "b", true)) continue;
+        if (check_font(".I", "i", true)) continue;
+        if (check_font(".F", "code", false)) continue;
 
         // .LNK link
         if (check_link()) continue;
 
-        // Print out the text
-        printf("%s", line);
+        // Print out the text content
+        print_escaped(line, len);
 
         // Detect end of sentence
         if (is_sentence_end(line, len))
@@ -285,7 +335,8 @@ main(int argc, char *argv[])
 static bool
 check_font(
     const char *restrict const roff_cmd,
-    const char *restrict const tag)
+    const char *restrict const tag,
+    bool sentspc)
 {
     if (len < strlen(roff_cmd) ||
         strncmp(line, roff_cmd, strlen(roff_cmd)) != 0) return false;
@@ -341,27 +392,26 @@ check_font(
     }
 
     // Print the immediate prefix, if any
-    if (args[2].s)
-    {
-        printf("%.*s", (int)(args[2].e - args[2].s), args[2].s);
-    }
+    if (args[2].s) print_escaped(args[2].s, (int)(args[2].e - args[2].s));
 
     // Print the actual content within the tags
-    printf("<%s>%.*s</%s>", tag, (int)(args[0].e - args[0].s), args[0].s, tag);
+    printf("<%s>", tag);
+    print_escaped(args[0].s, (int)(args[0].e - args[0].s));
+    printf("</%s>", tag);
 
     // Print the immediate suffix, if any
     if (args[1].s)
     {
-        printf("%.*s", (int)(args[1].e - args[1].s), args[1].s);
+        print_escaped(args[1].s, (int)(args[1].e - args[1].s));
 
         // If the suffix ends on sentence
-        if (is_sentence_end(args[1].s, (int)(args[1].e - args[1].s)))
+        if (sentspc && is_sentence_end(args[1].s, (int)(args[1].e - args[1].s)))
             end_sentence();
     }
     else if (args[0].e)
     {
         // If the content itself ends on sentence
-        if (is_sentence_end(args[0].s, (int)(args[0].e - args[0].s)))
+        if (sentspc && is_sentence_end(args[0].s, (int)(args[0].e - args[0].s)))
             end_sentence();
     }
 
@@ -423,20 +473,17 @@ check_link(void)
     }
 
     // Print the immediate prefix, if any
-    if (args[3].s)
-    {
-        printf("%.*s", (int)(args[3].e - args[3].s), args[3].s);
-    }
+    if (args[3].s) print_escaped(args[3].s, (int)(args[3].e - args[3].s));
 
     // Print the actual content within the tags
-    printf("<a href=\"%.*s\">%.*s</a>",
-        (int)(args[0].e - args[0].s), args[0].s,
-        (int)(args[1].e - args[1].s), args[1].s);
+    printf("<a href=\"%.*s\">", (int)(args[0].e - args[0].s), args[0].s);
+    print_escaped(args[1].s, (int)(args[1].e - args[1].s));
+    printf("</a>");
 
     // Print the immediate suffix, if any
     if (args[2].s)
     {
-        printf("%.*s", (int)(args[2].e - args[2].s), args[2].s);
+        print_escaped(args[2].s, (int)(args[2].e - args[2].s));
 
         // If the suffix ends on sentence
         if (is_sentence_end(args[2].s, *(args[2].e - 1))) end_sentence();
