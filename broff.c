@@ -141,6 +141,8 @@ print_escaped(const char *line, int l)
         HANDLE_ESC("\\(rq", "&rdquo;");
         HANDLE_ESC("\\(oq", "&lsquo;");
         HANDLE_ESC("\\(cq", "&rsquo;");
+        HANDLE_ESC("\\(aq", "'");
+        HANDLE_ESC("\\(dq", "\"");
 
         // TeX style typographer quotes; must be in this order
         HANDLE_ESC("``", "&ldquo;");
@@ -153,6 +155,14 @@ print_escaped(const char *line, int l)
         HANDLE_ESC(">", "&gt;");
         HANDLE_ESC("&", "&amp;");
         HANDLE_ESC("...", "&hellip;");
+
+        if (ispunct(*c) && strchr(",.!?;:'\"", *c) == NULL)
+        {
+            // Escape characters that aren't alphanumeric and are not a
+            // certain set of punctuation
+            printf("&#%d;", *c);
+            continue;
+        }
 
         // No escape here, just print out this content normally
         printf("%c", *c);
@@ -210,7 +220,20 @@ main(int argc, char *argv[])
         // We are in a preformatted block; just keep printing as-is
         if (cmd == CMD_DS)
         {
-            printf("\n%s", line);
+            //printf("\n%s", line);
+            printf("\n", line);
+
+            for (const char *c = line; *c; ++c)
+            {
+                if (ispunct(*c) && strchr(",.!?;:'\"", *c) == NULL)
+                {
+                    // Escape characters that aren't alphanumeric and are not a
+                    // certain set of punctuation
+                    printf("&#%d;", *c);
+                    continue;
+                }
+                printf("%c", *c);
+            }
             continue;
         }
 
@@ -490,12 +513,14 @@ check_link(void)
         print_escaped(args[2].s, (int)(args[2].e - args[2].s));
 
         // If the suffix ends on sentence
-        if (is_sentence_end(args[2].s, *(args[2].e - 1))) end_sentence();
+        if (is_sentence_end(args[2].s, (int)(args[2].e - args[2].s)))
+            end_sentence();
     }
     else if (args[1].e)
     {
         // If the content itself ends on sentence
-        if (is_sentence_end(args[1].s, *(args[1].e - 1))) end_sentence();
+        if (is_sentence_end(args[1].s, (int)(args[1].e - args[1].s)))
+            end_sentence();
     }
 
     return true;
