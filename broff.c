@@ -144,6 +144,9 @@ print_escaped(const char *line, int l)
         HANDLE_ESC("\\(aq", "'");
         HANDLE_ESC("\\(dq", "\"");
 
+        // Superscripts (not actual Roff escapes)
+        HANDLE_ESC("\\(Sc", "&#x1D9C;");
+
         // TeX style typographer quotes; must be in this order
         HANDLE_ESC("``", "&ldquo;");
         HANDLE_ESC("''", "&rdquo;");
