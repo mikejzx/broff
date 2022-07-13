@@ -144,9 +144,6 @@ print_escaped(const char *line, int l)
         HANDLE_ESC("\\(aq", "'");
         HANDLE_ESC("\\(dq", "\"");
 
-        // Superscripts (not actual Roff escapes)
-        HANDLE_ESC("\\(Sc", "&#x1D9C;");
-
         // TeX style typographer quotes; must be in this order
         HANDLE_ESC("``", "&ldquo;");
         HANDLE_ESC("''", "&rdquo;");
@@ -158,6 +155,24 @@ print_escaped(const char *line, int l)
         HANDLE_ESC(">", "&gt;");
         HANDLE_ESC("&", "&amp;");
         HANDLE_ESC("...", "&hellip;");
+
+        // Check for unicode escapes, which can appear like \[uXXXX]
+        static const char *const UNICODE_ESC_PREFIX = "\\[u";
+        if (len_remain > strlen(UNICODE_ESC_PREFIX) &&
+            strncmp(c, UNICODE_ESC_PREFIX, strlen(UNICODE_ESC_PREFIX)) == 0)
+        {
+            // Find end of escape (denoted by right-square bracket)
+            c += strlen(UNICODE_ESC_PREFIX);
+            const char *c_prev = c;
+            for (; c < line + l && *c != ']'; ++c);
+
+            // Print the character as HTML escape.
+            printf("&#x%.*s;",
+                (int)(c - c_prev),
+                c_prev);
+
+            continue;
+        }
 
         if (ispunct(*c) && strchr(",.!?;:'\"", *c) == NULL)
         {
