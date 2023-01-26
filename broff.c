@@ -25,6 +25,7 @@ static enum command
     CMD_NONE = 0,
     CMD_NH,
     CMD_PP,
+    CMD_LP,
     CMD_DS,
     CMD_TL,
 
@@ -55,17 +56,16 @@ is_sentence_end(const char *s, int len)
 {
 #define SENTENCE_END_CHARS ".?!"
 
-    // First simply check thelast character
+    // First simply check the last character
     const char *c = &s[len - 1];
     if (strchr(SENTENCE_END_CHARS, *c) != NULL) return true;
 
     // If full stop preceeds a certain set of punctuation, then we can call it
     // a sentence.
-    for (; c >= s &&
-        strchr(SENTENCE_END_CHARS "()[]`'\"", *c) != NULL;
+    for (; c >= s && strchr(SENTENCE_END_CHARS "()[]`'\"", *c) != NULL;
         --c)
     {
-        if (strchr(SENTENCE_END_CHARS, *c) == NULL) return true;
+        if (strchr(SENTENCE_END_CHARS, *c) != NULL) return true;
     }
 
     return false;
@@ -84,6 +84,7 @@ end_last_cmd(void)
         printf(INDENT_BASE INDENT
             "</h%d>\n", heading_level);
         break;
+    case CMD_LP:
     case CMD_PP:
         printf(INDENT_BASE INDENT
             "</p>\n");
@@ -291,6 +292,16 @@ main(int argc, char *argv[])
             cmd = CMD_PP;
 
             printf(INDENT_BASE INDENT "<p class=\"sentspc\">\n");
+            continue;
+        }
+        // .LP unindented paragraph
+        if (len >= strlen(".LP") &&
+            strncmp(line, ".LP", strlen(".LP")) == 0)
+        {
+            end_last_cmd();
+            cmd = CMD_LP;
+
+            printf(INDENT_BASE INDENT "<p class=\"sentspc noindent\">\n");
             continue;
         }
         // .DS begin display
