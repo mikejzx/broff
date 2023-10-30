@@ -360,9 +360,14 @@ main(int argc, char *argv[])
         // .B bold font
         // .I italic font
         // .F fixed font
+        // .ST/DL strikethrough/delete font extensions
+        // .IN ins extensions
         if (check_font(".B", "b", true)) continue;
         if (check_font(".I", "i", true)) continue;
         if (check_font(".F", "code", false)) continue;
+        if (check_font(".ST", "s", true)) continue;
+        if (check_font(".DL", "del", true)) continue;
+        if (check_font(".IN", "ins", true)) continue;
 
         // .H link check
         if (check_link()) continue;
